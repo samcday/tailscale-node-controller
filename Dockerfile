@@ -1,7 +1,7 @@
 #syntax=docker/dockerfile:1.2
-FROM golang:1.17 as builder
+FROM golang:1.19 as builder
 WORKDIR /usr/src/app
-ADD .github/workflows .
+ADD . .
 RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -o tailscale-node-controller .
