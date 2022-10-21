@@ -9,4 +9,4 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
 FROM alpine:3.13
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /usr/src/app/tailscale-node-controller /bin/
-CMD /bin/tailscale-node-controller
+ENTRYPOINT /bin/tailscale-node-controller

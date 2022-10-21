@@ -4,30 +4,28 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"go.uber.org/zap/zapcore"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"net/netip"
 	"os"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"tailscale.com/client/tailscale"
 	"tailscale.com/ipn"
 	"time"
-
-	"go.uber.org/zap/zapcore"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
-	corev1 "k8s.io/api/core/v1"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	"tailscale.com/client/tailscale"
 )
 
 var (
@@ -50,17 +48,21 @@ func main() {
 	logOpts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
+	if nodeName == "" {
+		fmt.Printf("-node not specified\n")
+		os.Exit(1)
+	}
+	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&logOpts)))
+
 	lc := tailscale.LocalClient{}
 	status, err := lc.Status(context.Background())
 	if err != nil {
-		log.Error(err, "error checking tailscale daemon status")
+		fmt.Printf("error checking tailscale daemon status: %w\n", err)
 		os.Exit(1)
 	}
 	if status.CurrentTailnet != nil {
 		log.Info("Tailscale daemon is connected", "tailnet", status.CurrentTailnet.Name)
 	}
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&logOpts)))
 
 	options := ctrl.Options{Scheme: scheme}
 
@@ -106,7 +108,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error checking tailscale daemon status: %w", err)
 	}
 	if status.BackendState != "Running" {
-
+		log.Info("tailscale daemon not currently running, requeuing in 5sec")
 		return reconcile.Result{RequeueAfter: 5 * time.Second}, nil
 	}
 
@@ -140,6 +142,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	}
 
 	if len(addedCIDRs) > 0 {
+		log.Info("node has updated routes", "node", node.Name, "addedCIDRs", addedCIDRs)
 		prefs.AdvertiseRoutes = append(prefs.AdvertiseRoutes, addedCIDRs...)
 		maskedPrefs := ipn.MaskedPrefs{
 			AdvertiseRoutesSet: true,
@@ -149,7 +152,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		}
 		_, err := r.lc.EditPrefs(ctx, &maskedPrefs)
 		if err != nil {
-			return reconcile.Result{}, fmt.Errorf("failed to add advertise new CIDRs %v: %w", addedCIDRs, err)
+			return reconcile.Result{}, fmt.Errorf("failed to advertise new CIDRs %v: %w", addedCIDRs, err)
 		}
 		r.recorder.Eventf(&node, corev1.EventTypeNormal, "PodCIDRsAdvertised", "PodCIDR(s) %v advertised from local Tailscale daemon", addedCIDRs)
 	}
