@@ -51,8 +51,15 @@ resources: {}
 
 nodeSelector: {}
 
-tolerations: []
+tolerations:
+  - operator: Exists
 
 affinity: {}
 
 extraContainers: []
+
+volumes:
+  tailscaled-socket:
+    hostPath:
+      path: /var/run/tailscale/tailscaled.sock
+    mountPath: /var/run/tailscale/tailscaled.sock
