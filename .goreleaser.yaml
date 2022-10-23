@@ -33,17 +33,14 @@ changelog:
       - '^docs:'
       - '^test:'
 dockers:
-  - image_templates:
-      - "ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-amd64"
+  - image_templates: ["ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-amd64"]
     dockerfile: Dockerfile
     build_flag_templates: ["--platform=linux/amd64"]
-  - image_templates:
-      - "ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-arm64v8"
+  - image_templates: ["ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-arm64v8"]
     goarch: arm64
     dockerfile: Dockerfile
     build_flag_templates: ["--platform=linux/arm64/v8"]
-  - image_templates:
-      - "ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-armv6"
+  - image_templates: ["ghcr.io/samcday/tailscale-node-controller:{{ .Version }}-armv6"]
     goarch: arm
     goarm: 6
     dockerfile: Dockerfile

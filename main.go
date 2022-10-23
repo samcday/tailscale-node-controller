@@ -65,6 +65,7 @@ func main() {
 	}
 
 	options := ctrl.Options{Scheme: scheme}
+	options.HealthProbeBindAddress = os.Getenv("HEALTH_BIND_ADDR")
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {

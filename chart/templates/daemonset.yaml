@@ -26,24 +26,34 @@ spec:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
         - name: {{ .Chart.Name }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -node
+            - $(NODE_NAME)
+          env:
+            {{- range $key, $spec := .Values.env }}
+            - name: {{ $key }}
+              {{- toYaml $spec | nindent 14 }}
+            {{- end }}
+          envFrom:
+            {{- toYaml .Values.envFrom | nindent 12 }}
           ports:
             - name: http
               containerPort: 80
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
-              port: http
+              path: /healthz
+              port: 8081
           readinessProbe:
             httpGet:
-              path: /
-              port: http
+              path: /readyz
+              port: 8081
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
           volumeMounts:
           {{- range $name, $spec := $.Values.volumes }}
             - name: {{ $name }}
