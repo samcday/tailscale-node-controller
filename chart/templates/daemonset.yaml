@@ -38,10 +38,6 @@ spec:
             {{- end }}
           envFrom:
             {{- toYaml .Values.envFrom | nindent 12 }}
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
