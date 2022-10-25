@@ -2,12 +2,21 @@ apiVersion: v1
 entries:
   tailscale-node-controller:
   - apiVersion: v2
+    appVersion: 0.0.5
+    created: "2022-10-25T07:22:18.886484709Z"
+    digest: 382551ed4319d24887bdca7b8195735f210163980980996c6eb5db640777396d
+    name: tailscale-node-controller
+    type: application
+    urls:
+    - https://samcday.github.io/hcloud-fip-k8s/tailscale-node-controller-0.0.5.tgz
+    version: 0.0.5
+  - apiVersion: v2
     appVersion: 0.0.4
-    created: "2022-10-25T07:11:29.663889692Z"
+    created: "2022-10-25T07:22:18.885928671Z"
     digest: cccb72feab31f23526d90abc6c8f909dab464525e3b19d526add607dd506fc93
     name: tailscale-node-controller
     type: application
     urls:
     - https://samcday.github.io/hcloud-fip-k8s/tailscale-node-controller-0.0.1.tgz
     version: 0.0.1
-generated: "2022-10-25T07:11:29.662415603Z"
+generated: "2022-10-25T07:22:18.884645183Z"
