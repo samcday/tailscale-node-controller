@@ -19,6 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"slices"
+	"sort"
 	"tailscale.com/client/tailscale"
 	"tailscale.com/ipn"
 	"time"
@@ -139,6 +141,58 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		}
 		if !found {
 			addedCIDRs = append(addedCIDRs, cidr)
+		}
+	}
+
+	var nonInternalAddresses []corev1.NodeAddress
+	var internalIPs []string
+	for _, addr := range node.Status.Addresses {
+		if addr.Type == corev1.NodeInternalIP {
+			internalIPs = append(internalIPs, addr.Address)
+		} else {
+			nonInternalAddresses = append(nonInternalAddresses, addr)
+		}
+	}
+	sort.Strings(internalIPs)
+
+	var expectedIPs []string
+	for _, addr := range status.TailscaleIPs {
+		expectedIPs = append(expectedIPs, addr.String())
+	}
+	sort.Strings(expectedIPs)
+
+	if !slices.Equal(expectedIPs, internalIPs) {
+		nodeOrig := node.DeepCopy()
+		node.Status.Addresses = nonInternalAddresses
+		for _, ip := range expectedIPs {
+			var addr corev1.NodeAddress
+			addr.Type = corev1.NodeInternalIP
+			addr.Address = ip
+			node.Status.Addresses = append(node.Status.Addresses, addr)
+		}
+		err := r.Status().Patch(ctx, &node, client.MergeFrom(nodeOrig))
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		r.recorder.Eventf(&node, corev1.EventTypeNormal, "NodeInternalIPUpdated", "Updated Node internal IPs to %v", expectedIPs)
+	}
+
+	var taints []corev1.Taint
+	tainted := false
+	for _, taint := range node.Spec.Taints {
+		if taint.Key == "node.cloudprovider.kubernetes.io/uninitialized" {
+			tainted = true
+		} else {
+			taints = append(taints, taint)
+		}
+	}
+
+	if tainted {
+		nodeOrig := node.DeepCopy()
+		node.Spec.Taints = taints
+		err := r.Client.Patch(ctx, &node, client.MergeFrom(nodeOrig))
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 	}
 
