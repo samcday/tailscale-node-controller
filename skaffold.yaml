@@ -1,0 +1,16 @@
+apiVersion: skaffold/v4beta6
+kind: Config
+metadata:
+  name: tailscale-node-controller
+build:
+  artifacts:
+    - image: ghcr.io/samcday/tailscale-node-controller
+      docker:
+        dockerfile: Dockerfile
+deploy:
+  helm:
+    releases:
+      - name: tailscale-node-controller
+        chartPath: chart
+        valuesFiles:
+          - chart/values.yaml
